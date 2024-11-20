@@ -88,7 +88,8 @@ def apply_local_smoothing(
         debug: Union[bool, str] = False
 ) -> pd.DataFrame:
     """Apply local polynomial regression to the spectrum."""
-    loess_fit = lowess(endog=spec_df[intensity_key], exog=spec_df['wvl'], frac=frac, it=0, return_sorted=False)
+    loess_fit = lowess(endog=spec_df[intensity_key], exog=spec_df['wvl'],
+                       frac=frac, it=0, return_sorted=False)
 
     spec_df = spec_df.copy()
     spec_df[smoothed_intensity_key] = loess_fit
@@ -104,10 +105,10 @@ def apply_local_smoothing(
                 {'data': spec_df, 'x_key': 'wvl', 'y_key': 'scaled_intensity',
                  'label': 'spectrum', 'ls': '-', 'lw': 1, 'c': 'grey', 'alpha': .8, 'zorder': 1},
                 {'data': spec_df, 'x_key': 'wvl', 'y_key': intensity_key,
-                 'label': intensity_key.replace('_', ' '),
+                 'label': f'{intensity_key.replace("_", " ")} (src.)',
                  'ls': '-.', 'lw': 1.2, 'c': 'tab:red', 'zorder': 1},
                 {'data': spec_df, 'x_key': 'wvl', 'y_key': smoothed_intensity_key,
-                 'label': smoothed_intensity_key.replace('_', ' '),
+                 'label': f'{smoothed_intensity_key.replace("_", " ")} (LOESS)',
                  'ls': '--', 'lw': 1.2, 'c': 'tab:blue', 'zorder': 2},
                 {'data': tmp_df, 'x_key': 'wvl', 'y_key': 'residual',
                  'label': 'src. - smoothed',
@@ -119,38 +120,47 @@ def apply_local_smoothing(
             'fig_title': 'Local polynomial regression'
         }
         if isinstance(debug, str):
-            print(f'saving local smoothing csv and plot to {debug}')
+            print(f'saving local smoothing plot to {debug}')
             os.makedirs(debug, exist_ok=True)
             plot_spectrum(**plot_data_dict, exp_filename=os.path.join(debug, 'local_smoothing.png'))
-            spec_df.to_csv(os.path.join(debug, 'spec_df.csv'), index=False)
         else:
             plot_spectrum(**plot_data_dict)
 
     return spec_df
 
 
-def calc_norm_intensity(
-        spec_df: pd.DataFrame, intensity_key: str, blaze_key: str, norm_intensity_key: str,
+def calc_primitive_norm_intensity(
+        spec_df: pd.DataFrame,
+        frac: float,
         debug: Union[bool, str] = False
 ) -> pd.DataFrame:
     """Calculate the normalised intensity of the spectrum."""
     spec_df = spec_df.copy()
-    spec_df[norm_intensity_key] = spec_df[intensity_key] / spec_df[blaze_key]
+
+    # apply local polynomial regression to the spectrum
+    spec_df = apply_local_smoothing(
+        spec_df,
+        intensity_key='tilde_AS_alpha',
+        smoothed_intensity_key='primitive_blaze',
+        frac=frac, debug=debug
+    )
+    spec_df['primitive_norm_intensity'] = spec_df['scaled_intensity'] / spec_df['primitive_blaze']
 
     if debug:
         from AFS._plot import plot_norm_spectrum
         plot_dict = {
             'plot_obj_dicts': [
-                {'data': spec_df, 'x_key': 'wvl', 'y_key': norm_intensity_key,
-                 'label': norm_intensity_key.replace('_', ' '),
+                {'data': spec_df, 'x_key': 'wvl', 'y_key': 'primitive_norm_intensity',
+                 'label': 'primitive norm. spec.',
                  'marker': '.', 'ms': 2, 'ls': '', 'c': 'k', 'zorder': 1},
             ],
-            'fig_title': 'Normalised spectrum'
+            'fig_title': 'Primitive Normalised Spectrum'
         }
         if isinstance(debug, str):
             print(f'saving normalised spectrum plot to {debug}')
             os.makedirs(debug, exist_ok=True)
-            plot_norm_spectrum(**plot_dict, exp_filename=os.path.join(debug, 'norm_spectrum.png'))
+            plot_norm_spectrum(
+                **plot_dict, exp_filename=os.path.join(debug, 'primitive_norm_intensity.png'))
         else:
             plot_norm_spectrum(**plot_dict)
 
