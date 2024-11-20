@@ -1,56 +1,69 @@
-from typing import Tuple, Union
+from typing import Union
 
-import numpy as np
 import pandas as pd
-from alphashape import alphashape
-from shapely.geometry import Polygon, MultiPolygon, LineString, Point
+
+from AFS._calc import calc_tilde_AS_alpha, apply_local_smoothing, calc_norm_intensity
 
 
-def _calc_alpha_shape_upper_boundary(
-        wvl, intensity, alpha_ball_radius: float
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Calculate the upper boundary of the alpha-shape of the spectrum."""
-    alpha_shape = alphashape(np.array(list(zip(wvl, intensity))), 1 / alpha_ball_radius ** 2)
+def filter_pixels_above_quantiles(
+        spec_df: pd.DataFrame, quantile: float, debug: Union[bool, str] = False
+) -> pd.DataFrame:
+    """Filter the spectrum pixels based on the quantile of the normalised intensity."""
+    intersecting_points_df = spec_df[spec_df['is_intersect_with_alpha_shape']].copy()
+    if len(intersecting_points_df) < 2:
+        raise ValueError(f'Expect at least 2 intersection points, got {len(intersecting_points_df)}.')
 
-    # find the vertices of the alpha-shape
-    if isinstance(alpha_shape, Polygon):
-        boundary = list(alpha_shape.exterior.coords)
-    elif isinstance(alpha_shape, MultiPolygon):
-        boundary = [coord for polygon in alpha_shape.geoms
-                    for coord in polygon.exterior.coords]
-    else:
-        raise ValueError('Alpha shape is empty or of an unsupported geometry type.')
-    boundary_df = pd.DataFrame(boundary, columns=['wvl', 'scaled_intensity'])
+    spec_df['is_selected_pixel'] = False
+    quantile_data = []
+    for i in range(len(intersecting_points_df) - 1):
+        start_point = intersecting_points_df.iloc[i]
+        end_point = intersecting_points_df.iloc[i + 1]
 
-    # find the upper boundary of the alpha-shape
-    boundary_polygon = Polygon(boundary)
-    min_x, min_y, max_x, max_y = boundary_polygon.bounds
-    upper_boundary = []
-    for x in boundary_df['wvl'].unique():
-        print(x)
-        intersections = boundary_polygon.intersection(LineString([(x, min_y - 1), (x, max_y + 1)]))
+        window_spec_df = spec_df[(spec_df['wvl'] >= start_point['wvl']) & (spec_df['wvl'] <= end_point['wvl'])]
+        window_spec_quantile = window_spec_df['norm_intensity1'].quantile(quantile)
 
-        if intersections.is_empty:
-            continue
-        elif isinstance(intersections, Point):
-            upper_boundary.append((x, intersections.y))
-        elif isinstance(intersections, LineString):
-            upper_boundary.append((x, np.max([intersections.coords[0][1], intersections.coords[1][1]])))
-        elif isinstance(intersections, Polygon):
-            upper_boundary.append((x, np.max([coord[1] for coord in intersections.exterior.coords])))
-        elif isinstance(intersections, MultiPolygon):
-            upper_boundary.append((x, np.max([polygon.exterior.coords[1] for polygon in intersections.geoms])))
+        spec_df.loc[window_spec_df.index, 'is_selected_pixel'] = (
+                window_spec_df['norm_intensity1'] >= window_spec_quantile)
+        quantile_data.append({
+            'x': [start_point['wvl'], end_point['wvl']],
+            'y': [window_spec_quantile] * 2
+        })
+
+    if debug:
+        from AFS._plot import plot_norm_spectrum
+        plot_data_dict = {
+            'plot_obj_dicts': [
+                {'data': spec_df, 'x_key': 'wvl', 'y_key': 'norm_intensity1',
+                 'label': 'norm. spec.',
+                 'ls': '-', 'lw': 1, 'c': 'grey', 'alpha': .8, 'zorder': 1},
+                {'data': spec_df[spec_df['is_intersect_with_alpha_shape']],
+                 'x_key': 'wvl', 'y_key': 'norm_intensity1',
+                 'label': 'tilde AS alpha $\cap$ spec.',
+                 'marker': 'x', 'ms': 8, 'mew': 1, 'ls': '', 'c': 'tab:red', 'zorder': 3},
+                {'data': spec_df[spec_df['is_selected_pixel']],
+                 'x_key': 'wvl', 'y_key': 'norm_intensity1',
+                 'label': 'selected pixels',
+                 'marker': '+', 'ms': 8, 'mew': 1, 'ls': '', 'c': 'tab:green', 'zorder': 3},
+            ],
+            'fig_title': f'Selected Pixels based on Quantiles (q={quantile})'
+        }
+        for data in quantile_data:
+            quantile_df = pd.DataFrame(data)
+            plot_data_dict['plot_obj_dicts'].append({
+                'data': quantile_df, 'x_key': 'x', 'y_key': 'y',
+                'label': f'q={quantile}', 'ls': '-', 'lw': 1, 'c': 'tab:blue', 'zorder': 2
+            })
+
+        if isinstance(debug, str):
+            plot_norm_spectrum(**plot_data_dict, exp_filename=debug)
         else:
-            raise ValueError('Intersection is of an unsupported geometry type.')
+            plot_norm_spectrum(**plot_data_dict)
 
-    upper_boundary_df = pd.DataFrame(upper_boundary, columns=['wvl', 'scaled_intensity']
-                                     ).sort_values(by='wvl').reset_index()
-
-    return boundary_df, upper_boundary_df
+    return spec_df
 
 
 def afs(
-        wvl, intensity, alpha: float = None, q=0.95, d=.25,
+        wvl, intensity, alpha_radius: float = None, q=0.95, d=.25,
         debug: Union[bool, str] = False,
 ):
     spec_df = pd.DataFrame(
@@ -67,18 +80,27 @@ def afs(
     u = wvl_range / 10 / spec_df['intensity'].max()
     spec_df['scaled_intensity'] = spec_df['intensity'] * u
     # radius of the alpha-ball (alpha shape)
-    alpha = alpha or wvl_range / 6
+    alpha_radius = alpha_radius or wvl_range / 6
 
-    # calculate the upper boundary of the alpha-shape
-    boundary_df, upper_boundary_df = _calc_alpha_shape_upper_boundary(
-        spec_df['wvl'], spec_df['scaled_intensity'], alpha)
+    # step 2: find AS_alpha and calculate tilde(AS_alpha)
+    spec_df, alpha_shape_df = calc_tilde_AS_alpha(spec_df, alpha_radius, debug)
 
-    # [AFS - step 3] local polynomial regression on tilde(AS_alpha)
+    # step 3: smooth tilde(AS_alpha) using local polynomial regression (LOESS)
+    # to estimate the blaze function hat(B_1)
+    spec_df = apply_local_smoothing(
+        spec_df,
+        intensity_key='tilde_AS_alpha',
+        smoothed_intensity_key='blaze1',
+        frac=d, debug=debug
+    )
+    # calculate normalised intensity hat(y^1) by y / hat(B_1)
+    spec_df = calc_norm_intensity(
+        spec_df,
+        intensity_key='scaled_intensity',
+        blaze_key='blaze1',
+        norm_intensity_key='norm_intensity1',
+        debug=debug
+    )
 
-    # visualise and save intermediate results
-    if debug:
-        from AFS._plot import plot_alpha_shape
-        if isinstance(debug, str):
-            plot_alpha_shape(spec_df, boundary_df, upper_boundary_df, debug)
-        else:
-            plot_alpha_shape(spec_df, boundary_df, upper_boundary_df)
+    # step 4: filter spectrum pixels for next iteration
+    spec_df = filter_pixels_above_quantiles(spec_df, q, debug)
