@@ -1,9 +1,10 @@
 import os
-from typing import Tuple, Union
+from typing import Tuple, Union, Literal
 
 import numpy as np
 import pandas as pd
 from alphashape import alphashape
+from scipy.interpolate import interp1d, UnivariateSpline
 from shapely import Polygon, MultiPolygon, LineString, Point
 from statsmodels.nonparametric.smoothers_lowess import lowess
 
@@ -12,15 +13,18 @@ def calc_tilde_AS_alpha(
         spec_df: pd.DataFrame, alpha_ball_radius: float, debug: Union[bool, str] = False
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Calculate the upper boundary of the alpha-shape of the spectrum."""
-    spec_df = spec_df.copy()
-    alpha_shape = alphashape(spec_df[['wvl', 'scaled_intensity']].values, 1 / alpha_ball_radius ** 2)
+    filtered_spec_df = spec_df[spec_df['is_outlier'] == False].copy()
+    alpha_shape = alphashape(
+        filtered_spec_df[['wvl', 'scaled_intensity']].values, 1 / alpha_ball_radius ** 2)
 
     # find the vertices of the alpha-shape
     if isinstance(alpha_shape, Polygon):
         alpha_shape_points = list(alpha_shape.exterior.coords)
     elif isinstance(alpha_shape, MultiPolygon):
-        alpha_shape_points = [coord for polygon in alpha_shape.geoms
-                              for coord in polygon.exterior.coords]
+        alpha_shape_points = [
+            coord for polygon in alpha_shape.geoms
+            for coord in polygon.exterior.coords
+        ]
     else:
         raise ValueError('Alpha shape is empty or of an unsupported geometry type.')
     alpha_shape_df = pd.DataFrame(alpha_shape_points, columns=['wvl', 'scaled_intensity'])
@@ -32,7 +36,8 @@ def calc_tilde_AS_alpha(
     # find tilde(AS_alpha), the upper boundary of the alpha-shape at each spectral pixel
     upper_boundary = []
     for x in spec_df['wvl']:
-        intersections = alpha_shape_polygon.intersection(LineString([(x, min_y - 1), (x, max_y + 1)]))
+        intersections = alpha_shape_polygon.intersection(
+            LineString([(x, min_y - 1), (x, max_y + 1)]))
 
         if intersections.is_empty:
             continue
@@ -40,43 +45,56 @@ def calc_tilde_AS_alpha(
             upper_boundary.append(intersections.y)
         elif isinstance(intersections, LineString):
             upper_boundary.append(np.max([intersections.coords[0][1], intersections.coords[1][1]]))
-        elif isinstance(intersections, Polygon):
-            upper_boundary.append(np.max([coord[1] for coord in intersections.exterior.coords]))
-        elif isinstance(intersections, MultiPolygon):
-            upper_boundary.append(np.max([polygon.exterior.coords[1] for polygon in intersections.geoms]))
         else:
             raise ValueError('Intersection is of an unsupported geometry type.')
 
     spec_df['tilde_AS_alpha'] = upper_boundary
     # mark the intersection of the spectrum with the upper boundary of the alpha-shape
-    spec_df['is_intersect_with_alpha_shape'] = spec_df['scaled_intensity'] == spec_df['tilde_AS_alpha']
+    spec_df['is_intersect_with_alpha_shape'] = (
+            spec_df['scaled_intensity'] == spec_df['tilde_AS_alpha'])
 
     if debug:
         from AFS._plot import plot_spectrum
 
+        # check if outlier are present
+        if spec_df['is_outlier'].any():
+            spec_plot_obj_dicts = [
+                # source spectrum
+                {'data': spec_df,
+                 'x_key': 'wvl', 'y_key': 'scaled_intensity', 'style': 'src_spec'},
+                # outliers
+                {'data': spec_df[spec_df['is_outlier']],
+                 'x_key': 'wvl', 'y_key': 'scaled_intensity', 'style': 'outlier'},
+                # cleanup spectrum
+                {'data': filtered_spec_df,
+                 'x_key': 'wvl', 'y_key': 'scaled_intensity', 'style': 'clean_spec'},
+            ]
+        else:
+            spec_plot_obj_dicts = [
+                # source spectrum
+                {'data': spec_df, 'x_key': 'wvl', 'y_key': 'scaled_intensity',
+                 'style': 'clean_spec', 'label': 'spec.'},
+            ]
+
         plot_data_dict = {
             'plot_obj_dicts': [
-                {'data': spec_df, 'x_key': 'wvl', 'y_key': 'scaled_intensity',
-                 'label': 'spectrum',
-                 'ls': '-', 'lw': 1, 'c': 'grey', 'alpha': .8, 'zorder': 1},
-                {'data': alpha_shape_df, 'x_key': 'wvl', 'y_key': 'scaled_intensity',
-                 'label': r'$\alpha$-shape',
-                 'marker': 'x', 'ms': 8, 'mew': 1, 'ls': ':', 'lw': 1, 'c': 'tab:red', 'zorder': 3},
+                *spec_plot_obj_dicts,
+                # alpha-shape
+                {'data': alpha_shape_df,
+                 'x_key': 'wvl', 'y_key': 'scaled_intensity', 'style': 'alpha_shape'},
+                # tilde_AS_alpha
+                {'data': spec_df,
+                 'x_key': 'wvl', 'y_key': 'tilde_AS_alpha', 'style': 'tilde_AS_alpha'},
+                # intersection points
                 {'data': spec_df[spec_df['is_intersect_with_alpha_shape']],
-                 'x_key': 'wvl', 'y_key': 'scaled_intensity', 'label': 'tilde AS alpha $\cap$ spectrum',
-                 'marker': '+', 'ms': 8, 'mew': 1, 'ls': '', 'c': 'tab:green', 'zorder': 3},
-                {'data': spec_df, 'x_key': 'wvl', 'y_key': 'tilde_AS_alpha',
-                 'label': 'tilde AS alpha',
-                 'marker': 'o', 'ms': 4, 'mew': 1, 'ls': '', 'lw': 1,
-                 'mec': 'tab:blue', 'mfc': 'None', 'alpha': .6, 'zorder': 2},
+                 'x_key': 'wvl', 'y_key': 'tilde_AS_alpha', 'style': 'tilde_AS_alpha_intersect'},
             ],
             'fig_title': '$\\alpha$-shape of the spectrum'
         }
         if isinstance(debug, str):
-            print(f'saving alpha-shape csv and plot to {debug}')
+            print(f'saving alpha-shape plot to {debug}')
             os.makedirs(debug, exist_ok=True)
             plot_spectrum(**plot_data_dict, exp_filename=os.path.join(debug, 'alpha_shape.png'))
-            spec_df.to_csv(os.path.join(debug, 'spec_df.csv'), index=False)
         else:
             plot_spectrum(**plot_data_dict)
 
@@ -84,15 +102,28 @@ def calc_tilde_AS_alpha(
 
 
 def apply_local_smoothing(
-        spec_df: pd.DataFrame, intensity_key: str, smoothed_intensity_key: str, frac: float,
-        debug: Union[bool, str] = False
+        spec_df: pd.DataFrame, intensity_key: str, smoothed_intensity_key: str,
+        smooth_method: Literal['lowess', 'spline'] = 'lowess',
+        debug: Union[bool, str] = False,
+        **kwargs
 ) -> pd.DataFrame:
     """Apply local polynomial regression to the spectrum."""
-    loess_fit = lowess(endog=spec_df[intensity_key], exog=spec_df['wvl'],
-                       frac=frac, it=0, return_sorted=False)
+    if smooth_method == 'lowess':
+        smoothed_intensity = lowess(
+            endog=spec_df[intensity_key], exog=spec_df['wvl'], frac=kwargs['frac'],
+            it=3, return_sorted=False
+        )
+    elif smooth_method == 'spline':
+        smoothed_intensity = UnivariateSpline(
+            spec_df['wvl'], spec_df[intensity_key], s=kwargs['s'], k=kwargs['k'],
+            ext='extrapolate'
+        )(spec_df['wvl'])
+    else:
+        raise ValueError(f'Invalid processing mode: {smooth_method}. '
+                         f'Please choose from "lowess" or "spline".')
 
     spec_df = spec_df.copy()
-    spec_df[smoothed_intensity_key] = loess_fit
+    spec_df[smoothed_intensity_key] = smoothed_intensity
 
     if debug:
         from AFS._plot import plot_spectrum
@@ -102,22 +133,22 @@ def apply_local_smoothing(
         tmp_df['residual'] = tmp_df[intensity_key] - tmp_df[smoothed_intensity_key]
         plot_data_dict = {
             'plot_obj_dicts': [
-                {'data': spec_df, 'x_key': 'wvl', 'y_key': 'scaled_intensity',
-                 'label': 'spectrum', 'ls': '-', 'lw': 1, 'c': 'grey', 'alpha': .8, 'zorder': 1},
+                # spectrum
+                {'data': spec_df, 'x_key': 'wvl', 'y_key': 'scaled_intensity', 'style': 'src_spec'},
+                # source intensity
                 {'data': spec_df, 'x_key': 'wvl', 'y_key': intensity_key,
-                 'label': f'{intensity_key.replace("_", " ")} (src.)',
-                 'ls': '-.', 'lw': 1.2, 'c': 'tab:red', 'zorder': 1},
+                 'style': 'line', 'label': intensity_key, 'c': 'tab:red'},
+                # smoothed intensity
                 {'data': spec_df, 'x_key': 'wvl', 'y_key': smoothed_intensity_key,
-                 'label': f'{smoothed_intensity_key.replace("_", " ")} (LOESS)',
-                 'ls': '--', 'lw': 1.2, 'c': 'tab:blue', 'zorder': 2},
+                 'style': 'line', 'label': smoothed_intensity_key, 'c': 'tab:blue'},
+                # residual
                 {'data': tmp_df, 'x_key': 'wvl', 'y_key': 'residual',
-                 'label': 'src. - smoothed',
-                 'ls': '-', 'lw': 1.2, 'c': 'tab:purple', 'zorder': 3},
+                 'style': 'line', 'label': 'residual', 'c': 'tab:purple'},
             ],
             'aux_plot_obj_dicts': [
                 {'orientation': 'h', 'y': 0, 'ls': ':', 'lw': 1, 'c': 'k', 'alpha': .8, 'zorder': -1}
             ],
-            'fig_title': 'Local polynomial regression'
+            'fig_title': f'Local Smoothing ({smooth_method})'
         }
         if isinstance(debug, str):
             print(f'saving local smoothing plot to {debug}')
@@ -131,29 +162,53 @@ def apply_local_smoothing(
 
 def calc_primitive_norm_intensity(
         spec_df: pd.DataFrame,
-        frac: float,
+        smoothing_method: Literal['lowess', 'spline'] = 'lowess',
+        frac: float = .1, s: float = 1e-5, k: int = 3,
         debug: Union[bool, str] = False
 ) -> pd.DataFrame:
     """Calculate the normalised intensity of the spectrum."""
-    spec_df = spec_df.copy()
+    filtered_spec_df = spec_df[spec_df['is_outlier'] == False].copy()
 
     # apply local polynomial regression to the spectrum
-    spec_df = apply_local_smoothing(
-        spec_df,
+    filtered_spec_df = apply_local_smoothing(
+        filtered_spec_df,
         intensity_key='tilde_AS_alpha',
+        smooth_method=smoothing_method,
         smoothed_intensity_key='primitive_blaze',
-        frac=frac, debug=debug
+        frac=frac, s=s, k=k,
+        debug=debug
     )
+    # normalise the spectrum by the primitive blaze function
+    primitive_blaze_func = interp1d(
+        filtered_spec_df['wvl'], filtered_spec_df['primitive_blaze'],
+        kind='cubic', fill_value='extrapolate'
+    )
+    spec_df['primitive_blaze'] = primitive_blaze_func(spec_df['wvl'])
     spec_df['primitive_norm_intensity'] = spec_df['scaled_intensity'] / spec_df['primitive_blaze']
 
     if debug:
         from AFS._plot import plot_norm_spectrum
-        plot_dict = {
-            'plot_obj_dicts': [
+
+        # check if outlier are present
+        if spec_df['is_outlier'].any():
+            spec_plot_obj_dicts = [
+                # primitive normalised spectrum
                 {'data': spec_df, 'x_key': 'wvl', 'y_key': 'primitive_norm_intensity',
-                 'label': 'primitive norm. spec.',
-                 'marker': '.', 'ms': 2, 'ls': '', 'c': 'k', 'zorder': 1},
-            ],
+                 'style': 'src_spec', 'label': 'primitive norm. spec.'},
+                # primitive normalised spectrum with outliers removed
+                {'data': spec_df[spec_df['is_outlier'] == False],
+                 'x_key': 'wvl', 'y_key': 'primitive_norm_intensity',
+                 'style': 'clean_spec', 'label': 'cleaned primitive norm. spec.'},
+            ]
+        else:
+            spec_plot_obj_dicts = [
+                # primitive normalised spectrum
+                {'data': spec_df, 'x_key': 'wvl', 'y_key': 'primitive_norm_intensity',
+                 'style': 'clean_spec', 'label': 'primitive norm. spec.'},
+            ]
+
+        plot_dict = {
+            'plot_obj_dicts': [*spec_plot_obj_dicts],
             'fig_title': 'Primitive Normalised Spectrum'
         }
         if isinstance(debug, str):
