@@ -35,7 +35,7 @@ archivePrefix = {arXiv},
 To install `pyAFS`, you can use `pip`:
 
 ```bash
-pip install pyafs
+pip install pyafs-astro
 ```
 
 Alternatively, you can clone this repository and install the package locally:
@@ -52,12 +52,12 @@ pip install .
 
 ```plaintext
 numpy
-scipy
-matplotlib  
 pandas
 alphashape
-shapely
 loess
+scipy
+shapely
+matplotlib  
 ```
 
 ## Usage
