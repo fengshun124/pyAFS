@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "pyafs"
+version = "0.1.1"
+description = "A Python implementation of Alpha-shape Fitting to Spectrum (AFS) algorithm"
+authors = ["Yifan Wang <fengshun124@outlook.com>"]
+license = "GPL-3.0-or-later"
+homepage = "https://github.com/fengshun124/pyAFS"
+repository = "https://github.com/fengshun124/pyAFS"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9"
+numpy = "*"
+pandas = "*"
+alphashape = "*"
+loess = "*"
+scipy = "*"
+shapely = "*"
+matplotlib = "*"
+
+[build-system]
+requires = ["poetry-core", "Cython"]
+build-backend = "poetry.core.masonry.api"

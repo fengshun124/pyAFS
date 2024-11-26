@@ -29,3 +29,50 @@ archivePrefix = {arXiv},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
 ```
+
+## Installation
+
+To install `pyAFS`, you can use `pip`:
+
+```bash
+pip install pyafs
+```
+
+Alternatively, you can clone this repository and install the package locally:
+
+```bash
+git clone https://github.com/fengshun124/pyAFS.git
+cd pyAFS
+pip install .
+```
+
+## Dependencies
+
+`pyAFS` requires Python 3.9 or later, as well as the following packages:
+
+```plaintext
+numpy
+scipy
+matplotlib  
+pandas
+alphashape
+shapely
+loess
+```
+
+## Usage
+
+A simple example of using `afs` is shown below:
+
+```python
+import pandas as pd
+from pyafs import afs
+
+# load the spectrum data
+data = pd.read_csv('spectrum.csv')
+
+# normalise the spectrum
+normalised_flux = afs(data['wavelength'], data['flux'])
+```
+
+A more detailed example can be found in the [example notebook](examples/afs.ipynb).
