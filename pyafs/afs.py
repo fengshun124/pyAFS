@@ -252,7 +252,7 @@ def afs(
     """
 
     spec_df = pd.DataFrame(
-        {'wvl': wvl, 'scaled_intensity': intensity}
+        {'wvl': wvl, 'intensity': intensity}
     ).sort_values(by='wvl').dropna().reset_index(drop=True)
     if spec_df.empty:
         raise ValueError('Input data is either empty or full of NaN values, aborting.')
@@ -261,9 +261,9 @@ def afs(
     # radius of the alpha-ball (alpha shape)
     alpha_radius = alpha_radius or wvl_range / 10
 
-    # step 1: scale the range of intensity and wavelength to be 1:10
-    u = wvl_range / 10 / spec_df['scaled_intensity'].max()
-    spec_df['scaled_intensity'] = spec_df['scaled_intensity'] * u
+    # step 1: scale the range of intensity and wavelength to be approximately 1:10
+    u = wvl_range / 10 / spec_df['intensity'].max()
+    spec_df['scaled_intensity'] = spec_df['intensity'] * u
 
     # step 1.5: remove spectral outliers resulting from cosmic rays or other noise
     # (not part of the original AFS algorithm)
