@@ -1,5 +1,3 @@
-from .afs import afs
-
 try:
     from importlib.metadata import version, PackageNotFoundError
 except ImportError:
@@ -9,5 +7,7 @@ try:
     __version__ = version('pyafs-astro')
 except PackageNotFoundError:
     __version__ = 'unknown'
+
+from pyafs.afs import afs
 
 __all__ = ['afs']
