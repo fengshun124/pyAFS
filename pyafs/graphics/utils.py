@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 def export_figure(figure: plt.Figure, filename: str = None):
     """Show or save the figure."""
     if filename is None:
-        plt.tight_layout()
+        # plt.tight_layout()
         plt.show()
     else:
         if not os.path.isdir(os.path.dirname(filename)):

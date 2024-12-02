@@ -52,7 +52,7 @@ def mark_outlier(
         peak_indices, _ = find_peaks(
             spec_df.loc[non_outlier_mask_iter, 'scaled_intensity'],
         )
-        spec_df.loc[non_outlier_mask_iter, 'is_outlier'].iloc[peak_indices] = True
+        spec_df.loc[spec_df.index[non_outlier_mask_iter][peak_indices], 'is_outlier'] = True
         outlier_mask_iter |= spec_df['is_outlier']
 
     if debug:

@@ -14,8 +14,8 @@ def plot_norm_spec(
     colour_dict = {'primitive': 'tab:red', 'final': 'tab:green'}
 
     fig, (scaled_ax, norm_ax) = plt.subplots(
-        2, 1, figsize=(10, 6), dpi=300, height_ratios=[3, 2],
-        gridspec_kw=dict(hspace=.1), sharex=True, sharey=False
+        2, 1, figsize=(10, 7), dpi=300, height_ratios=[3, 2],
+        gridspec_kw=dict(hspace=.2), sharex=True, sharey=False
     )
 
     if spec_df['is_outlier'].any():
@@ -47,6 +47,8 @@ def plot_norm_spec(
     norm_ax.yaxis.set_major_locator(plt.MultipleLocator(.3, offset=.1))
 
     scaled_ax.set_ylabel('scaled intensity', fontsize='x-large')
+    scaled_ax.set_ylim(None, int(scaled_ax.get_ylim()[1]) + 1)
+
     norm_ax.set_ylabel('normalised intensity', fontsize='x-large')
     norm_ax.set_xlabel('wavelength', fontsize='x-large')
 

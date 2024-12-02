@@ -33,6 +33,7 @@ def plot_outliers(
     )
     axis.set_ylim(None, y_upper_lim)
 
+
     axis.legend(loc='upper right', fontsize='medium')
 
     set_axis_ticks(axis)

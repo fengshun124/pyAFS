@@ -48,6 +48,7 @@ def plot_alpha_shape(
     axis.tick_params(labelsize='large')
     axis.set_xlabel('wavelength', fontsize='x-large')
     axis.set_ylabel('scaled intensity', fontsize='x-large')
+    axis.set_ylim(None, int(axis.get_ylim()[1]) + 1)
 
     if isinstance(debug, str):
         export_figure(fig, filename=os.path.join(debug, 'alpha_shape.png'))

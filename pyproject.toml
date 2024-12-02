@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyafs-astro"
-version = "0.1.0"
+version = "0.1.2"
 description = "A Python implementation of Alpha-shape Fitting to Spectrum (AFS) algorithm"
 authors = ["Yifan Wang <fengshun124@outlook.com>"]
 license = "GPL-3.0-or-later"

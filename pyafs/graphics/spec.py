@@ -7,7 +7,7 @@ import pandas as pd
 from pyafs.graphics.utils import set_axis_ticks, export_figure
 
 
-def plot_spec(
+def plot_norm_spec(
         spec_df: pd.DataFrame,
         debug: Union[bool, str] = False
 ) -> None:

@@ -9,8 +9,6 @@ from pyafs.utils import (
     mark_outlier,
     calc_alpha_shape_upper_boundary,
     calc_primitive_norm_intensity,
-)
-from pyafs.utils_afs import (
     filter_pixels_above_quantile,
     calc_final_norm_intensity
 )
@@ -22,10 +20,11 @@ def afs(
         continuum_filter_quantile: float = .95,
         primitive_blaze_smoothing: SMOOTHING_METHODS = 'loess',
         final_blaze_smoothing: SMOOTHING_METHODS = 'loess',
+        is_include_intersections: bool = False,
         is_remove_outliers: bool = True,
         outlier_rolling_window: int = 80,
         outlier_rolling_baseline_quantile: float = .8,
-        outlier_rolling_mad_scale: float = 1,
+        outlier_rolling_mad_scale: float = 1.4,
         outlier_max_iterations: int = 2,
         debug: Union[bool, str] = False,
         **kwargs
@@ -55,6 +54,7 @@ def afs(
     :param continuum_filter_quantile: Quantile for filtering pixels near the primary blaze function (default: 0.95).
     :param primitive_blaze_smoothing: Smoothing method for the primitive blaze function (default: 'loess').
     :param final_blaze_smoothing: Smoothing method for the final blaze function (default: 'loess').
+    :param is_include_intersections: Whether to include the intersections with the alpha shape in the final normalised intensity (default: False).
     :param is_remove_outliers: Whether to remove outliers before normalisation (default: True).
     :param outlier_rolling_window: Window size for the rolling median filter (default: 80).
     :param outlier_rolling_baseline_quantile: Quantile for constructing the rolling baseline (default: 0.8).
@@ -111,10 +111,14 @@ def afs(
 
     # step 5: smooth filtered pixels in step 4 to estimate the refined blaze function hat(B_2)
     # (the original work also uses local polynomial regression (LOESS) for this step)
+    # the flag `is_include_intersections` determines whether to
+    # include intersections of tilde(AS_alpha) with the spectrum when smoothing the final blaze function,
+    # potentially improving continuum recovery at the spectrum's edges.
     # after smoothing, calculate the final normalised intensity y^3 by y^2 / hat(B_2)
     spec_df = calc_final_norm_intensity(
         spec_df=spec_df,
         smoothing_method=final_blaze_smoothing,
+        is_include_intersections=is_include_intersections,
         debug=debug,
         **{new_key: v for k, v in kwargs.items() if k.startswith('final_smooth_')
            for new_key in [k.replace('final_smooth_', '')]}
