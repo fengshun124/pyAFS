@@ -56,6 +56,6 @@ def mark_outlier(
         outlier_mask_iter |= spec_df['is_outlier']
 
     if debug:
-        plot_outliers(spec_df, rolling_mad_scale, debug)
+        plot_outliers(spec_df, rolling_mad_scale, rolling_baseline_quantile, debug)
 
     return spec_df

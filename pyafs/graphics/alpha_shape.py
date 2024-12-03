@@ -42,13 +42,16 @@ def plot_alpha_shape(
               'o', ms=6, mew=1, mec='tab:orange', mfc='None', alpha=.8,
               label='$\\widetilde{AS}_{\\alpha}$ $\cap$ spec.')
 
-    axis.legend(fontsize='medium')
+    axis.legend(fontsize='medium', ncol=5, handlelength=1.4, columnspacing=1.6,
+                loc='upper center')
 
     set_axis_ticks(axis)
     axis.tick_params(labelsize='large')
     axis.set_xlabel('wavelength', fontsize='x-large')
     axis.set_ylabel('scaled intensity', fontsize='x-large')
     axis.set_ylim(None, int(axis.get_ylim()[1]) + 1)
+
+    fig.suptitle('$\\alpha$-Shape of Spectrum', fontsize='xx-large', y=.94)
 
     if isinstance(debug, str):
         export_figure(fig, filename=os.path.join(debug, 'alpha_shape.png'))

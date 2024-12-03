@@ -3,7 +3,7 @@ from typing import Union
 import pandas as pd
 
 from pyafs.graphics.norm_blaze import plot_afs_final_norm_spec
-from pyafs.graphics.spec import plot_norm_spec
+from pyafs.graphics.spec import plot_norm_spec_compare
 from pyafs.utils.interpolate import interpolate_intensity
 from pyafs.utils.smooth import SMOOTHING_METHODS, smooth_intensity
 
@@ -47,6 +47,6 @@ def calc_final_norm_intensity(
 
     if debug:
         plot_afs_final_norm_spec(spec_df, debug)
-        plot_norm_spec(spec_df, debug)
+        plot_norm_spec_compare(spec_df, debug)
 
     return spec_df

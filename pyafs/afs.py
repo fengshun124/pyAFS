@@ -54,13 +54,15 @@ def afs(
     :param continuum_filter_quantile: Quantile for filtering pixels near the primary blaze function (default: 0.95).
     :param primitive_blaze_smoothing: Smoothing method for the primitive blaze function (default: 'loess').
     :param final_blaze_smoothing: Smoothing method for the final blaze function (default: 'loess').
-    :param is_include_intersections: Whether to include the intersections with the alpha shape in the final normalised intensity (default: False).
+    :param is_include_intersections: Whether to include intersection points between upper alpha shape boundary and spectrum
+        for final blaze function estimation. If False, the final blaze function will be estimated by smoothing the filtered pixels only (default: False).
     :param is_remove_outliers: Whether to remove outliers before normalisation (default: True).
     :param outlier_rolling_window: Window size for the rolling median filter (default: 80).
     :param outlier_rolling_baseline_quantile: Quantile for constructing the rolling baseline (default: 0.8).
-    :param outlier_rolling_mad_scale: Scale factor for the rolling median filter (default: 1).
+    :param outlier_rolling_mad_scale: Scale factor for the rolling median filter (default: 1.4).
     :param outlier_max_iterations: Maximum number of iterations for outlier removal (default: 2).
-    :param debug: Whether to return the intermediate results for debugging. If a string is provided, the intermediate results will be saved to the directory specified by the string (default: False).
+    :param debug: Whether to return the intermediate results for debugging. If a string is provided, the intermediate results
+        will be saved to the directory specified by the string (default: False).
     :param kwargs: Additional parameters for smoothing algorithms, provided in the format of `(stage)_smooth_(arg)`.
     :return: Normalised intensity of the spectrum. If `debug` is True, also return the intermediate results in a DataFrame.
     """
@@ -113,7 +115,7 @@ def afs(
     # (the original work also uses local polynomial regression (LOESS) for this step)
     # the flag `is_include_intersections` determines whether to
     # include intersections of tilde(AS_alpha) with the spectrum when smoothing the final blaze function,
-    # potentially improving continuum recovery at the spectrum's edges.
+    # potentially improving continuum recovery at the edges of the spectrum.
     # after smoothing, calculate the final normalised intensity y^3 by y^2 / hat(B_2)
     spec_df = calc_final_norm_intensity(
         spec_df=spec_df,

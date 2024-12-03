@@ -8,7 +8,9 @@ from pyafs.graphics.utils import set_axis_ticks, export_figure
 
 
 def plot_outliers(
-        spec_df: pd.DataFrame, rolling_mad_scale: float,
+        spec_df: pd.DataFrame,
+        rolling_mad_scale: float,
+        rolling_baseline_quantile: float,
         debug: Union[bool, str] = False
 ):
     """Plot the outliers in the spectrum."""
@@ -26,20 +28,24 @@ def plot_outliers(
     y_upper_lim = axis.get_ylim()[1]
     axis.fill_between(
         spec_df['wvl'],
-        spec_df['scaled_intensity_rolling_baseline'] + rolling_mad_scale * spec_df['scaled_intensity_rolling_mad'],
+        spec_df['scaled_intensity_rolling_baseline'] +
+        rolling_mad_scale * spec_df['scaled_intensity_rolling_mad'],
         y_upper_lim, hatch='////', edgecolor='tab:orange', facecolor='none',
         zorder=-1, alpha=.2,
-        label='outlier threshold'
+        label=f'{rolling_mad_scale} MAD above '
+              f'rolling {rolling_baseline_quantile:.0%} baseline'
     )
     axis.set_ylim(None, y_upper_lim)
 
-
-    axis.legend(loc='upper right', fontsize='medium')
+    axis.legend(fontsize='medium', ncol=5, handlelength=1.4, columnspacing=1.6,
+                loc='upper center')
 
     set_axis_ticks(axis)
     axis.tick_params(labelsize='large')
     axis.set_xlabel('wavelength', fontsize='x-large')
     axis.set_ylabel('scaled intensity', fontsize='x-large')
+
+    fig.suptitle('Outliers in Spectrum', fontsize='xx-large', y=.94)
 
     if isinstance(debug, str):
         export_figure(fig, filename=os.path.join(debug, 'outliers.png'))

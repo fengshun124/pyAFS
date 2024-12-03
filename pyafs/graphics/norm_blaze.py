@@ -14,26 +14,26 @@ def plot_norm_spec(
     colour_dict = {'primitive': 'tab:red', 'final': 'tab:green'}
 
     fig, (scaled_ax, norm_ax) = plt.subplots(
-        2, 1, figsize=(10, 7), dpi=300, height_ratios=[3, 2],
-        gridspec_kw=dict(hspace=.2), sharex=True, sharey=False
+        2, 1, figsize=(10, 7), dpi=300, height_ratios=[4, 3],
+        gridspec_kw=dict(hspace=.1)
     )
 
     if spec_df['is_outlier'].any():
         scaled_ax.plot(spec_df['wvl'], spec_df['scaled_intensity'],
-                       '-', c='grey', lw=1, alpha=.8, label='source spec.')
+                       '-', c='grey', lw=1, alpha=.8, label=f'source {key_prefix} spec.')
         norm_ax.plot(spec_df['wvl'], spec_df[f'{key_prefix}_norm_intensity'],
-                     '-', c='grey', lw=1, alpha=.8, label='source spec.')
+                     '-', c='grey', lw=1, alpha=.8, label=f'source {key_prefix} spec.')
 
         cleanup_spec_df = spec_df[~spec_df['is_outlier']]
         scaled_ax.plot(cleanup_spec_df['wvl'], cleanup_spec_df['scaled_intensity'],
-                       '-', c='k', lw=1, alpha=.8, label='non-outlier spec.')
+                       '-', c='k', lw=1, alpha=.8, label=f'non-outlier {key_prefix} spec.')
         norm_ax.plot(cleanup_spec_df['wvl'], cleanup_spec_df[f'{key_prefix}_norm_intensity'],
-                     '-', c='k', lw=1, alpha=.8, label='non-outlier spec.')
+                     '-', c='k', lw=1, alpha=.8, label=f'non-outlier {key_prefix} spec.')
     else:
         scaled_ax.plot(spec_df['wvl'], spec_df['scaled_intensity'],
-                       'k-', lw=1, alpha=.8, label='spec.')
+                       'k-', lw=1, alpha=.8, label=f'{key_prefix} spec.')
         norm_ax.plot(spec_df['wvl'], spec_df[f'{key_prefix}_norm_intensity'],
-                     'k-', lw=1, alpha=.8, label='spec.')
+                     'k-', lw=1, alpha=.8, label=f'{key_prefix} norm spec.')
 
     scaled_ax.plot(spec_df['wvl'], spec_df[f'{key_prefix}_blaze'],
                    '-', c=colour_dict[key_prefix], lw=1, alpha=.8, label=f'{key_prefix} blaze')
@@ -72,8 +72,14 @@ def plot_primitive_norm_spec(
                    'o', ms=6, mew=1, mec='tab:orange', mfc='None', alpha=.8,
                    label='$\\widetilde{AS}_{\\alpha}$ $\cap$ spec.')
 
+    # different legend layouts for DataFrame with and without outliers
+    legend_n_col = 3 if spec_df['is_outlier'].any() else 5
+
     for axis in [scaled_ax, norm_ax]:
-        axis.legend(fontsize='medium', ncol=3)
+        axis.legend(fontsize='medium', ncol=legend_n_col, handlelength=1.4, columnspacing=1.6,
+                    loc='upper center' if axis == scaled_ax else 'lower center')
+
+    fig.suptitle('Primitive Normalised Spectrum', fontsize='xx-large', y=.92)
 
     if isinstance(debug, str):
         export_figure(fig, filename=os.path.join(debug, 'primitive_norm.png'))
@@ -90,17 +96,23 @@ def plot_afs_final_norm_spec(
 
     scaled_ax.plot(spec_df[spec_df['is_above_quantile']]['wvl'],
                    spec_df[spec_df['is_above_quantile']]['scaled_intensity'],
-                   'o', ms=6, mew=1, mec='tab:green', mfc='None', alpha=.8,
+                   'x', ms=6, mew=1, mec='tab:green', mfc='None', alpha=.8,
                    label=f'selected pixels')
     scaled_ax.plot(spec_df[spec_df['is_intersect_with_tilde_AS_alpha']]['wvl'],
                    spec_df[spec_df['is_intersect_with_tilde_AS_alpha']]['scaled_intensity'],
-                   'x', ms=6, mew=1, mec='tab:orange', mfc='None', alpha=.8,
-                   label='intersect with $AS_{\\alpha}$')
+                   'o', ms=6, mew=1, mec='tab:orange', mfc='None', alpha=.8,
+                   label='$\widetilde{\mathrm{AS}}_{\\alpha}$ $\cap$ spec.')
     scaled_ax.plot(spec_df['wvl'], spec_df['primitive_blaze'],
                    '-', c='tab:red', lw=1, alpha=.8, label='primitive blaze')
 
+    # different legend layouts for DataFrame with and without outliers
+    legend_n_col = 3 if spec_df['is_outlier'].any() else 5
+
     for axis in [scaled_ax, norm_ax]:
-        axis.legend(fontsize='medium', ncol=3)
+        axis.legend(fontsize='medium', ncol=legend_n_col, handlelength=1.4, columnspacing=1.6,
+                    loc='upper center' if axis == scaled_ax else 'lower center')
+
+    fig.suptitle('Final Normalised Spectrum', fontsize='xx-large', y=.92)
 
     if isinstance(debug, str):
         export_figure(fig, filename=os.path.join(debug, 'final_norm.png'))
