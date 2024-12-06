@@ -48,7 +48,7 @@ pip install .
 
 ## Dependencies
 
-`pyAFS` requires Python 3.9 or later, as well as the following packages:
+`pyAFS` requires Python 3.10 or later, as well as the following packages:
 
 ```plaintext
 numpy
