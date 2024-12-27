@@ -1,7 +1,8 @@
-from typing import Union, Any
+from typing import Union, Any, Tuple
 
 import numpy as np
 import pandas as pd
+from numpy import ndarray, dtype
 
 from pyafs.utils import SMOOTHING_METHODS
 from pyafs.utils import (
@@ -16,6 +17,7 @@ from pyafs.utils import (
 
 def afs(
         wvl, intensity,
+        intensity_err: np.ndarray[Any, np.dtype[Any]] = None,
         alpha_radius: float = None,
         continuum_filter_quantile: float = .95,
         primitive_blaze_smoothing: SMOOTHING_METHODS = 'loess',
@@ -28,7 +30,12 @@ def afs(
         outlier_max_iterations: int = 2,
         debug: Union[bool, str] = False,
         **kwargs
-) -> tuple[np.ndarray[Any, np.dtype[Any]], pd.DataFrame] | np.ndarray[Any, np.dtype[Any]]:
+) -> Union[
+    Tuple[ndarray[Any, dtype[Any]], ndarray[Any, dtype[Any]], pd.DataFrame],
+    Tuple[ndarray[Any, dtype[Any]], pd.DataFrame],
+    Tuple[ndarray[Any, dtype[Any]], ndarray[Any, dtype[Any]]],
+    ndarray[Any, dtype[Any]]
+]:
     """
     Adaptive Filtering Spectra (AFS) algorithm to normalise the intensity of a spectrum.
     Please read https://iopscience.iop.org/article/10.3847/1538-3881/ab1b47 for more details about this algorithm.
@@ -50,6 +57,7 @@ def afs(
 
     :param wvl: Spectral wavelength in Angstrom.
     :param intensity: Spectral intensity.
+    :param intensity_err: Error of the spectral intensity (default: None).
     :param alpha_radius: Radius of the alpha shape (default: 1/10 of the wavelength range).
     :param continuum_filter_quantile: Quantile for filtering pixels near the primary blaze function (default: 0.95).
     :param primitive_blaze_smoothing: Smoothing method for the primitive blaze function (default: 'loess').
@@ -66,7 +74,10 @@ def afs(
     :param kwargs: Additional parameters for smoothing algorithms, provided in the format of `(stage)_smooth_(arg)`.
     :return: Normalised intensity of the spectrum. If `debug` is True, also return the intermediate results in a DataFrame.
     """
-    spec_df = pd.DataFrame({'wvl': wvl, 'intensity': intensity})
+    spec_df = pd.DataFrame({
+        'wvl': wvl, 'intensity': intensity,
+        'intensity_err': intensity_err if intensity_err is not None else np.zeros_like(intensity)
+    })
 
     # step 1: scale the range of intensity and wavelength to be approximately 1:10
     spec_df = scale_intensity(spec_df)
@@ -128,7 +139,14 @@ def afs(
 
     final_norm_intensity = spec_df['final_norm_intensity']
 
-    if debug:
-        return np.array(final_norm_intensity), spec_df
+    # calculate the final normalised intensity error, if provided
+    if intensity_err is not None:
+        final_norm_intensity_err = spec_df['scaled_intensity_err'] / spec_df['final_blaze']
+        result = (np.array(final_norm_intensity), np.array(final_norm_intensity_err))
     else:
-        return np.array(final_norm_intensity)
+        result = (np.array(final_norm_intensity),)
+    # return the intermediate results if debug mode is enabled
+    if debug:
+        result += (spec_df,)
+
+    return result
