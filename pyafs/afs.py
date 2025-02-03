@@ -17,7 +17,7 @@ from pyafs.utils import (
 
 def afs(
         wvl, intensity,
-        intensity_err: np.ndarray[Any, np.dtype[Any]] = None,
+        intensity_err: ndarray[Any, dtype[Any]] = None,
         alpha_radius: float = None,
         continuum_filter_quantile: float = .95,
         primitive_blaze_smoothing: SMOOTHING_METHODS = 'loess',
@@ -37,7 +37,7 @@ def afs(
     ndarray[Any, dtype[Any]]
 ]:
     """
-    Adaptive Filtering Spectra (AFS) algorithm to normalise the intensity of a spectrum.
+    Alpha-shape Fitting to Spectrum (AFS) algorithm to normalise the intensity of a spectrum.
     Please read https://iopscience.iop.org/article/10.3847/1538-3881/ab1b47 for more details about this algorithm.
 
     Based on the original AFS algorithm implemented in R, this method offers greater flexibility in the choice of smoothing methods.

@@ -22,7 +22,7 @@ def filter_pixels_above_quantile(
     intersect_wvl = spec_df.loc[spec_df['is_intersect_with_tilde_AS_alpha'], 'wvl']
     quantile_dfs = []
     # mark pixels above the quantile of windows formed by the intersecting points
-    for start_wvl, end_wvl in zip(intersect_wvl[:-1], intersect_wvl[1:]):
+    for start_wvl, end_wvl in zip(intersect_wvl.iloc[:-1], intersect_wvl.iloc[1:]):
         window_mask = (
                 (spec_df['wvl'] >= start_wvl) &
                 (spec_df['wvl'] <= end_wvl) &
