@@ -8,37 +8,55 @@ from pyafs.graphics.utils import export_figure
 
 
 def plot_filtered_pixels(
-        spec_df: pd.DataFrame,
-        filter_quantile: float,
-        quantile_dfs: list[pd.DataFrame],
-        debug: Union[bool, str] = False
+    spec_df: pd.DataFrame,
+    filter_quantile: float,
+    quantile_dfs: list[pd.DataFrame],
+    debug: Union[bool, str] = False,
 ) -> None:
     """Plot the filtered pixels."""
-    fig, (scaled_ax, norm_ax) = plot_norm_spec(spec_df, 'primitive')
+    fig, (scaled_ax, norm_ax) = plot_norm_spec(spec_df, "primitive")
 
-    for axis, key_prefix in zip([scaled_ax, norm_ax], ['scaled_', 'primitive_norm_']):
-        axis.plot(spec_df[spec_df['is_above_quantile']]['wvl'],
-                  spec_df[spec_df['is_above_quantile']][f'{key_prefix}intensity'],
-                  'x', ms=6, mew=1, mec='tab:green', mfc='None', alpha=.8,
-                  label=f'pixels above {filter_quantile:.0%} quantile')
+    for axis, key_prefix in zip([scaled_ax, norm_ax], ["scaled_", "primitive_norm_"]):
+        axis.plot(
+            spec_df[spec_df["is_above_quantile"]]["wvl"],
+            spec_df[spec_df["is_above_quantile"]][f"{key_prefix}intensity"],
+            "x",
+            ms=6,
+            mew=1,
+            mec="tab:green",
+            mfc="None",
+            alpha=0.8,
+            label=f"pixels above {filter_quantile:.0%} quantile",
+        )
 
     for quantile_df in quantile_dfs:
-        norm_ax.plot(quantile_df['wvl'], quantile_df['primitive_norm_intensity'],
-                     '-', c='magenta', lw=1, label=f'{filter_quantile:.0%} quantile')
+        norm_ax.plot(
+            quantile_df["wvl"],
+            quantile_df["primitive_norm_intensity"],
+            "-",
+            c="magenta",
+            lw=1,
+            label=f"{filter_quantile:.0%} quantile",
+        )
 
     # different legend layouts for DataFrame with and without outliers
-    legend_n_col = 2 if spec_df['is_outlier'].any() else 4
+    legend_n_col = 2 if spec_df["is_outlier"].any() else 4
 
     for axis in [scaled_ax, norm_ax]:
         axis.legend(
-            *[*zip(*{l: h for h, l in zip(*axis.get_legend_handles_labels())}.items())][::-1],
-            fontsize='medium', ncol=legend_n_col, handlelength=1.4, columnspacing=1.6,
-            loc='upper center' if axis == scaled_ax else 'lower center'
+            *[*zip(*{l: h for h, l in zip(*axis.get_legend_handles_labels())}.items())][
+                ::-1
+            ],
+            fontsize="medium",
+            ncol=legend_n_col,
+            handlelength=1.4,
+            columnspacing=1.6,
+            loc="upper center" if axis == scaled_ax else "lower center",
         )
 
-    fig.suptitle('Filtered Pixels', fontsize='xx-large', y=.92)
+    fig.suptitle("Filtered Pixels", fontsize="xx-large", y=0.92)
 
     if isinstance(debug, str):
-        export_figure(fig, filename=os.path.join(debug, 'filtered_pixels.png'))
+        export_figure(fig, filename=os.path.join(debug, "filtered_pixels.png"))
     elif debug:
         export_figure(fig)

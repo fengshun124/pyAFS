@@ -1,23 +1,22 @@
 import pandas as pd
+from typing import Dict
 from scipy.interpolate import interp1d
 
 
-def extract_interpolate_args(
-        **kwargs
-) -> dict:
+def extract_interpolate_args(**kwargs) -> Dict[str, str]:
     """Extract the interpolation arguments."""
     return {
-        'kind': kwargs.get('interp_kind', 'quadratic'),
-        'fill_value': kwargs.get('fill_value', 'extrapolate'),
+        "kind": kwargs.get("interp_kind", "quadratic"),
+        "fill_value": kwargs.get("fill_value", "extrapolate"),
     }
 
 
 def interpolate_intensity(
-        spec_df: pd.DataFrame,
-        filtered_spec_df: pd.DataFrame,
-        intensity_key: str,
-        **kwargs
-):
+    spec_df: pd.DataFrame,
+    filtered_spec_df: pd.DataFrame,
+    intensity_key: str,
+    **kwargs,
+) -> pd.DataFrame:
     """Interpolate the intensity values of the spectrum."""
     spec_df = spec_df.copy()
     filtered_spec_df = filtered_spec_df.copy()
@@ -27,7 +26,7 @@ def interpolate_intensity(
 
     # interpolate the intensity values
     spec_df[intensity_key] = interp1d(
-        filtered_spec_df['wvl'], filtered_spec_df[intensity_key], **interp_args
-    )(spec_df['wvl'])
+        filtered_spec_df["wvl"], filtered_spec_df[intensity_key], **interp_args
+    )(spec_df["wvl"])
 
     return spec_df

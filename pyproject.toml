@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyafs-astro"
-version = "0.1.6"
+version = "0.2.0"
 description = "A Python implementation of Alpha-shape Fitting to Spectrum (AFS) algorithm"
 authors = ["Yifan Wang <fengshun124@outlook.com>"]
 license = "GPL-3.0-or-later"
@@ -18,6 +18,11 @@ loess = "*"
 scipy = "*"
 shapely = "*"
 matplotlib = "*"
+
+[[tool.poetry.source]]
+name = "mirrors"
+url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"
+priority = "primary"
 
 [build-system]
 requires = ["poetry-core"]
